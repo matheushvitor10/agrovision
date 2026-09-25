@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agrovision — Prevenção de Enchentes</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  body{ background:#F5F7F6; }
+  .navbar-brand{ font-weight:700; }
+  .hero{ background:linear-gradient(135deg,#0B2027,#123C4A); color:#fff; }
+  .badge-status{ background:#D9A62E; color:#3a2c00; }
+  .card-num{ font-size:2rem; font-weight:700; }
+  .section-title{ font-weight:700; }
+  .bg-dark-section{ background:#0B2027; color:#fff; }
+  .bg-dark-section .card{ background:#123C4A; color:#fff; border:none; transition:transform .15s ease, box-shadow .15s ease; }
+  .bg-dark-section .card:hover{ transform:translateY(-3px); box-shadow:0 8px 20px rgba(0,0,0,0.25); }
+  .bg-dark-section .card small{ color:#D9A62E; }
+  .emergency-card{ border:2px solid #C0392B; transition:box-shadow .15s ease, transform .15s ease; }
+  .emergency-card:hover{ box-shadow:0 6px 16px rgba(192,57,43,0.15); transform:translateY(-2px); }
+  .emergency-card .card-num{ color:#C0392B; }
+  footer{ background:#0B2027; color:#dcdcdc; }
+
+  #riskMap{ height:520px; border-radius:12px; z-index:1; }
+  .map-wrapper{ position:relative; }
+  .map-legend{
+    position:absolute; bottom:16px; left:16px; z-index:500;
+    background:rgba(255,255,255,0.96); border-radius:10px; padding:14px 16px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.15); font-size:0.85rem;
+  }
+  .map-legend .legend-item{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .map-legend .legend-item:last-child{ margin-bottom:0; }
+  .legend-dot{ width:14px; height:14px; border-radius:50%; display:inline-block; }
+  .dot-red{ background:#C0392B; }
+  .dot-yellow{ background:#D9A62E; }
+  .dot-green{ background:#2E8B57; }
+  .zone-summary-card{ border-left:5px solid #ccc; transition:box-shadow .15s ease, transform .15s ease; }
+  .zone-summary-card:hover{ box-shadow:0 6px 16px rgba(11,32,39,0.08); transform:translateY(-2px); }
+  .zone-summary-card.zone-red small{ color:#C0392B; }
+  .zone-summary-card.zone-yellow small{ color:#b3821f; }
+  .zone-summary-card.zone-green small{ color:#2E8B57; }
+  .zone-summary-card.zone-red{ border-left-color:#C0392B; }
+  .zone-summary-card.zone-yellow{ border-left-color:#D9A62E; }
+  .zone-summary-card.zone-green{ border-left-color:#2E8B57; }
+  .leaflet-popup-content h6{ font-weight:700; margin-bottom:4px; }
+  .leaflet-popup-content .badge{ margin-bottom:6px; }
+
+  .dev-card{
+    background:#fff;
+    border:1px solid #e1e6e5;
+    border-radius:14px;
+    padding:1.8rem;
+    height:100%;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .dev-card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 10px 24px rgba(11,32,39,0.10);
+  }
+  .dev-avatar{
+    width:64px;
+    height:64px;
+    border-radius:50%;
+    background:#0B2027;
+    color:#D9A62E;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:1.3rem;
+    font-family: inherit;
+    flex-shrink:0;
+  }
+  .dev-role{
+    color:#D9A62E;
+    background:#0B2027;
+    font-size:.72rem;
+    font-weight:700;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    padding:.2rem .6rem;
+    border-radius:20px;
+    display:inline-block;
+  }
+  .dev-badge{
+    display:inline-block;
+    background:#F5F7F6;
+    border:1px solid #e1e6e5;
+    color:#3a4a48;
+    font-size:.76rem;
+    padding:.22rem .6rem;
+    border-radius:20px;
+    margin:.15rem .3rem .15rem 0;
+  }
+  .dev-info{
+    font-size:.85rem;
+    color:#5b6b6a;
+    display:flex;
+    justify-content:space-between;
+    padding:.4rem 0;
+    border-bottom:1px solid #eef1f0;
+  }
+  .dev-info:last-child{ border-bottom:none; }
+  .dev-card a.btn:hover{ opacity:.9; color:#fff; }
+  .dev-slot{
+    background:transparent;
+    border:2px dashed #cfd8d6;
+    border-radius:14px;
+    height:100%;
+    min-height:220px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    color:#8a9694;
+    font-size:.9rem;
+    padding:1.8rem;
+  }
+
+  #riscos .card, #cuidados .card, #contatos .card.border-primary{
+    transition:box-shadow .15s ease, transform .15s ease;
+  }
+  #riscos .card:hover, #cuidados .card:hover, #contatos .card.border-primary:hover{
+    transform:translateY(-2px);
+  }
+  #cuidados .card:hover{ box-shadow:0 6px 16px rgba(11,32,39,0.08); }
+  #contatos .card.border-primary:hover{ box-shadow:0 6px 16px rgba(13,110,253,0.12); }
+
+  /* ===== Novas seções: Como funciona ===== */
+  .step-card{
+    background:#fff;
+    border:1px solid #e1e6e5;
+    border-radius:14px;
+    padding:2rem 1.6rem;
+    height:100%;
+    position:relative;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .step-card:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(11,32,39,0.08); }
+  .step-number{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    background:#0B2027;
+    color:#D9A62E;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:1rem;
+  }
+  .step-illustration{
+    width:100%;
+    max-width:130px;
+    margin:0 auto 1.2rem;
+    display:block;
+  }
+  .step-arrow{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#cfd8d6;
+    font-size:1.6rem;
+  }
+
+  /* ===== Números ===== */
+  .stats-section{ background:#123C4A; color:#fff; }
+  .stat-num{ font-size:2.6rem; font-weight:700; color:#D9A62E; }
+  .stat-label{ color:#c9d6d4; font-size:.9rem; }
+
+  /* ===== FAQ ===== */
+  .accordion-item{ background:#fff; border:1px solid #e1e6e5; border-radius:10px !important; margin-bottom:.8rem; overflow:hidden; }
+  .accordion-button{ font-weight:600; color:#0B2027; }
+  .accordion-button:not(.collapsed){ background:#F5F7F6; color:#123C4A; box-shadow:none; }
+  .accordion-button:focus{ box-shadow:none; border-color:#e1e6e5; }
+
+  /* ===== Tecnologia ===== */
+  .tech-card{
+    background:#fff;
+    border:1px solid #e1e6e5;
+    border-radius:14px;
+    padding:2rem 1.6rem;
+    height:100%;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .tech-card:hover{ transform:translateY(-3px); box-shadow:0 10px 24px rgba(11,32,39,0.08); }
+  .tech-illustration{ width:100%; max-width:130px; margin:0 auto 1.2rem; display:block; }
+  .tech-tag{
+    display:inline-block;
+    background:#F5F7F6;
+    border:1px solid #e1e6e5;
+    color:#3a4a48;
+    font-size:.76rem;
+    font-family:monospace;
+    padding:.22rem .6rem;
+    border-radius:6px;
+    margin:.15rem .3rem .15rem 0;
+  }
+  .tech-arrow{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#cfd8d6;
+    font-size:1.6rem;
+  }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+  <div class="container">
+    <a class="navbar-brand" href="#">Agrovision</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link" href="#painel">Painel</a></li>
+        <li class="nav-item"><a class="nav-link" href="#como-funciona">Como funciona</a></li>
+        <li class="nav-item"><a class="nav-link" href="#tecnologia">Tecnologia</a></li>
+        <li class="nav-item"><a class="nav-link" href="#mapa">Mapa de risco</a></li>
+        <li class="nav-item"><a class="nav-link" href="#riscos">Riscos</a></li>
+        <li class="nav-item"><a class="nav-link" href="#cuidados">Cuidados</a></li>
+        <li class="nav-item"><a class="nav-link" href="#desenvolvedores">Desenvolvedores</a></li>
+        <li class="nav-item"><a class="nav-link" href="#faq">FAQ</a></li>
+        <li class="nav-item"><a class="nav-link" href="#contatos">Contatos</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<header class="hero py-5" id="painel">
+  <div class="container py-4">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-7">
+        <span class="badge badge-status mb-3">⚠ Nível do rio: ATENÇÃO</span>
+        <h1 class="display-5 fw-bold">O rio avisa antes de transbordar.</h1>
+        <p class="lead">O Agrovision acompanha o nível dos rios e a previsão de chuva na sua região para dar tempo de agir antes da enchente.</p>
+        <a href="#mapa" class="btn btn-warning btn-lg me-2">Ver mapa de risco</a>
+        <a href="#contatos" class="btn btn-outline-light btn-lg">Contatos de emergência</a>
+      </div>
+      <div class="col-lg-5">
+        <div class="card bg-white text-dark shadow">
+          <div class="card-body">
+            <h6 class="text-muted text-uppercase small">Cota do rio · Estação Ribeirão Preto/SP</h6>
+            <div class="d-flex align-items-center justify-content-between mt-3">
+              <div>
+                <div class="card-num text-primary">2,90 m</div>
+                <small class="text-muted">Subindo ~4cm/h · leitura há 12 min</small>
+              </div>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mt-3 mb-1">
+              <span>0m</span>
+              <span>Cota atual: 2,90m</span>
+              <span>Alerta: 3,50m</span>
+            </div>
+            <div class="progress" style="height:10px;">
+              <div class="progress-bar bg-primary" role="progressbar" style="width:58%"></div>
+            </div>
+            <hr>
+            <span class="badge bg-warning text-dark">Cota de alerta em 3,50m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+
+<!-- Como funciona -->
+<section class="py-5" id="como-funciona">
+  <div class="container">
+    <h2 class="section-title mb-2">Como funciona o Agrovision</h2>
+    <p class="text-muted mb-5">Em 4 passos simples: da medição do rio até o aviso pra quem mora perto dele.</p>
+
+    <div class="row g-4 align-items-stretch">
+      <div class="col-md-3">
+        <div class="step-card text-center">
+          <div class="step-number mx-auto">1</div>
+          <svg class="step-illustration" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="70" width="130" height="30" fill="#dfeaf0"/>
+            <path d="M0 70 Q 32 58 65 70 T 130 70 V100 H0 Z" fill="#7fb3d5"/>
+            <rect x="60" y="20" width="6" height="52" fill="#123C4A"/>
+            <circle cx="63" cy="16" r="9" fill="#D9A62E"/>
+            <path d="M63 16 L80 8" stroke="#0B2027" stroke-width="3" stroke-linecap="round"/>
+            <path d="M50 30 Q 63 22 76 30" stroke="#0B2027" stroke-width="2" fill="none" opacity=".5"/>
+            <path d="M46 40 Q 63 28 80 40" stroke="#0B2027" stroke-width="2" fill="none" opacity=".3"/>
+          </svg>
+          <h6>Sensor mede o rio</h6>
+          <p class="text-muted small mb-0">Um sensor no rio mede a altura da água toda hora.</p>
+        </div>
+      </div>
+      <div class="col-md-auto d-none d-md-flex step-arrow"><i class="bi bi-chevron-right"></i></div>
+      <div class="col-md-3">
+        <div class="step-card text-center">
+          <div class="step-number mx-auto">2</div>
+          <svg class="step-illustration" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="45" cy="38" rx="30" ry="20" fill="#c7d6dc"/>
+            <ellipse cx="75" cy="30" rx="26" ry="22" fill="#dfeaf0"/>
+            <line x1="35" y1="66" x2="28" y2="86" stroke="#5b93c4" stroke-width="4" stroke-linecap="round"/>
+            <line x1="55" y1="66" x2="48" y2="90" stroke="#5b93c4" stroke-width="4" stroke-linecap="round"/>
+            <line x1="75" y1="66" x2="68" y2="86" stroke="#5b93c4" stroke-width="4" stroke-linecap="round"/>
+            <line x1="95" y1="62" x2="90" y2="80" stroke="#5b93c4" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          <h6>Cruza com a chuva</h6>
+          <p class="text-muted small mb-0">O sistema olha também a previsão de chuva da região.</p>
+        </div>
+      </div>
+      <div class="col-md-auto d-none d-md-flex step-arrow"><i class="bi bi-chevron-right"></i></div>
+      <div class="col-md-3">
+        <div class="step-card text-center">
+          <div class="step-number mx-auto">3</div>
+          <svg class="step-illustration" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="8" width="114" height="84" rx="10" fill="#F5F7F6" stroke="#e1e6e5" stroke-width="2"/>
+            <circle cx="40" cy="38" r="9" fill="#C0392B"/>
+            <circle cx="80" cy="30" r="9" fill="#D9A62E"/>
+            <circle cx="95" cy="65" r="9" fill="#2E8B57"/>
+            <circle cx="45" cy="68" r="9" fill="#2E8B57"/>
+          </svg>
+          <h6>Marca no mapa</h6>
+          <p class="text-muted small mb-0">Cada bairro fica verde, amarelo ou vermelho, conforme o risco.</p>
+        </div>
+      </div>
+      <div class="col-md-auto d-none d-md-flex step-arrow"><i class="bi bi-chevron-right"></i></div>
+      <div class="col-md-3">
+        <div class="step-card text-center">
+          <div class="step-number mx-auto">4</div>
+          <svg class="step-illustration" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+            <rect x="48" y="8" width="34" height="84" rx="8" fill="#0B2027"/>
+            <rect x="52" y="16" width="26" height="58" rx="2" fill="#dfeaf0"/>
+            <circle cx="65" cy="82" r="3" fill="#D9A62E"/>
+            <circle cx="65" cy="40" r="13" fill="#D9A62E"/>
+            <path d="M65 33 v8 l6 4" stroke="#0B2027" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <path d="M40 30 Q30 40 38 52" stroke="#D9A62E" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+            <path d="M90 30 Q100 40 92 52" stroke="#D9A62E" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>
+          </svg>
+          <h6>Avisa o morador</h6>
+          <p class="text-muted small mb-0">Quem mora na área de risco recebe o aviso a tempo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- Tecnologia -->
+<section class="py-5 bg-white" id="tecnologia">
+  <div class="container">
+    <h2 class="section-title mb-2">A tecnologia por trás do Agrovision</h2>
+    <p class="text-muted mb-5">O projeto usa peças simples e baratas — ideais pra um protótipo de estudante. Aqui está o que cada parte faz.</p>
+
+    <div class="row g-4 align-items-stretch">
+
+      <!-- Sensor ultrassônico -->
+      <div class="col-md-4">
+        <div class="tech-card text-center">
+          <svg class="tech-illustration" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+            <rect x="30" y="30" width="70" height="35" rx="6" fill="#123C4A"/>
+            <circle cx="50" cy="47" r="10" fill="#dfeaf0"/>
+            <circle cx="80" cy="47" r="10" fill="#dfeaf0"/>
+            <path d="M50 34 Q50 20 40 12" stroke="#D9A62E" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".8"/>
+            <path d="M50 34 Q50 14 32 4" stroke="#D9A62E" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".5"/>
+            <path d="M0 85 Q 32 75 65 85 T 130 85 V100 H0 Z" fill="#7fb3d5"/>
+          </svg>
+          <h5>Sensor ultrassônico</h5>
+          <p class="text-muted small">
+            Fica em cima do rio e manda um "bipe" de som pra baixo. Mede quanto tempo o som demora
+            pra voltar — isso dá a distância até a água. Quanto menor a distância, mais alto está o rio.
+          </p>
+          <span class="tech-tag">HC-SR04</span>
+          <span class="tech-tag">Sensor de distância</span>
+        </div>
+      </div>
+
+      <div class="col-md-auto d-none d-md-flex tech-arrow"><i class="bi bi-chevron-right"></i></div>
+
+      <!-- ESP32 -->
+      <div class="col-md-4">
+        <div class="tech-card text-center">
+          <svg class="tech-illustration" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+            <rect x="35" y="18" width="60" height="64" rx="6" fill="#0B2027"/>
+            <rect x="45" y="28" width="40" height="30" rx="3" fill="#123C4A"/>
+            <g stroke="#D9A62E" stroke-width="3">
+              <line x1="28" y1="28" x2="35" y2="28"/>
+              <line x1="28" y1="40" x2="35" y2="40"/>
+              <line x1="28" y1="52" x2="35" y2="52"/>
+              <line x1="28" y1="64" x2="35" y2="64"/>
+              <line x1="95" y1="28" x2="102" y2="28"/>
+              <line x1="95" y1="40" x2="102" y2="40"/>
+              <line x1="95" y1="52" x2="102" y2="52"/>
+              <line x1="95" y1="64" x2="102" y2="64"/>
+            </g>
+            <path d="M65 26 a10 10 0 0 1 12 8" stroke="#D9A62E" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M65 26 a16 16 0 0 1 18 13" stroke="#D9A62E" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".6"/>
+            <circle cx="65" cy="26" r="2.5" fill="#D9A62E"/>
+          </svg>
+          <h5>ESP32 com Wi-Fi</h5>
+          <p class="text-muted small">
+            É o "cérebro" pequeno que lê o sensor e já tem Wi-Fi embutido. Ele pega essa leitura
+            e manda pela internet, sem precisar de cabo nem de outro computador por perto.
+          </p>
+          <span class="tech-tag">ESP32</span>
+          <span class="tech-tag">Wi-Fi</span>
+        </div>
+      </div>
+
+      <div class="col-md-auto d-none d-md-flex tech-arrow"><i class="bi bi-chevron-right"></i></div>
+
+      <!-- Front-end -->
+      <div class="col-md-4">
+        <div class="tech-card text-center">
+          <svg class="tech-illustration" viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="12" width="110" height="76" rx="8" fill="#F5F7F6" stroke="#e1e6e5" stroke-width="2"/>
+            <rect x="10" y="12" width="110" height="14" rx="8" fill="#123C4A"/>
+            <circle cx="20" cy="19" r="2.5" fill="#C0392B"/>
+            <circle cx="28" cy="19" r="2.5" fill="#D9A62E"/>
+            <circle cx="36" cy="19" r="2.5" fill="#2E8B57"/>
+            <rect x="20" y="36" width="35" height="42" rx="4" fill="#dfeaf0"/>
+            <rect x="63" y="36" width="47" height="18" rx="4" fill="#D9A62E" opacity=".85"/>
+            <rect x="63" y="60" width="47" height="18" rx="4" fill="#7fb3d5"/>
+          </svg>
+          <h5>Front-end (esse painel)</h5>
+          <p class="text-muted small">
+            É a tela que você está vendo agora. Ela recebe os dados enviados pelo ESP32 e mostra
+            tudo de um jeito fácil de entender: números, mapa colorido e alertas.
+          </p>
+          <span class="tech-tag">HTML</span>
+          <span class="tech-tag">CSS</span>
+          <span class="tech-tag">Bootstrap</span>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="text-muted small mt-4 mb-0">
+      Resumindo: o sensor mede, o ESP32 manda pela internet, e esse painel mostra o resultado em tempo real.
+    </p>
+  </div>
+</section>
+
+
+<!-- Mapa de risco -->
+<section class="py-5" id="mapa">
+  <div class="container">
+    <h2 class="section-title mb-2">Mapa interativo de risco</h2>
+    <p class="text-muted mb-4">Clique em uma área para ver o status detalhado da região. As cores indicam o nível de risco de alagamento no momento.</p>
+
+    <div class="map-wrapper shadow-sm">
+      <div id="riskMap"></div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="legend-dot dot-red"></span> Perigo — evacuação recomendada</div>
+        <div class="legend-item"><span class="legend-dot dot-yellow"></span> Cuidado — atenção redobrada</div>
+        <div class="legend-item"><span class="legend-dot dot-green"></span> Tranquilo — sem risco no momento</div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+      <div class="col-md-4">
+        <div class="card zone-summary-card zone-red p-3 h-100">
+          <small class="text-uppercase text-muted">Zona crítica</small>
+          <h6 class="mb-1">Fundo de vale · Córrego Ribeirão Preto</h6>
+          <p class="mb-0 text-muted small">Cota acima do limite de transbordamento. Famílias já orientadas a deixar o local.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card zone-summary-card zone-yellow p-3 h-100">
+          <small class="text-uppercase text-muted">Zona de atenção</small>
+          <h6 class="mb-1">Áreas próximas às margens</h6>
+          <p class="mb-0 text-muted small">Nível subindo. Mantenha-se informado e evite deslocamentos desnecessários.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card zone-summary-card zone-green p-3 h-100">
+          <small class="text-uppercase text-muted">Zona estável</small>
+          <h6 class="mb-1">Regiões altas e afastadas de córregos</h6>
+          <p class="mb-0 text-muted small">Sem indícios de risco de alagamento nas últimas horas.</p>
+        </div>
+      </div>
+    </div>
+    <p class="text-muted small mt-3 mb-0">Mapa ilustrativo com fins de demonstração do sistema Agrovision. Em uma situação real, siga as orientações oficiais da Defesa Civil do seu município.</p>
+  </div>
+</section>
+
+
+<section class="bg-dark-section py-5" id="riscos">
+  <div class="container">
+    <h2 class="section-title mb-2">Por que é perigoso sair durante a enchente</h2>
+    <p class="mb-4" style="color:#c9d6d4;">A água parada de 15cm já derruba um adulto. Correnteza, contaminação e riscos escondidos tornam qualquer deslocamento muito mais perigoso do que parece.</p>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 p-3">
+          <small class="text-uppercase fw-bold">01 · Correnteza</small>
+          <h5 class="mt-2">Força da água</h5>
+          <p class="mb-0" style="color:#cdd9d7;">15cm de água em movimento derrubam uma pessoa; 50cm arrastam um carro.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 p-3">
+          <small class="text-uppercase fw-bold">02 · Contaminação</small>
+          <h5 class="mt-2">Água contaminada</h5>
+          <p class="mb-0" style="color:#cdd9d7;">Mistura com esgoto e lixo, principal via de contágio de leptospirose.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 p-3">
+          <small class="text-uppercase fw-bold">03 · Eletricidade</small>
+          <h5 class="mt-2">Choque elétrico</h5>
+          <p class="mb-0" style="color:#cdd9d7;">Fiações submersas podem eletrificar a água sem sinal visível.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 p-3">
+          <small class="text-uppercase fw-bold">04 · Terreno</small>
+          <h5 class="mt-2">Buracos invisíveis</h5>
+          <p class="mb-0" style="color:#cdd9d7;">Bueiros e valas ficam escondidos sob a água turva.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 p-3">
+          <small class="text-uppercase fw-bold">05 · Animais</small>
+          <h5 class="mt-2">Animais peçonhentos</h5>
+          <p class="mb-0" style="color:#cdd9d7;">A cheia expulsa cobras e escorpiões de seus esconderijos.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-4">
+        <div class="card h-100 p-3">
+          <small class="text-uppercase fw-bold">06 · Estrutura</small>
+          <h5 class="mt-2">Desabamento</h5>
+          <p class="mb-0" style="color:#cdd9d7;">Solo encharcado aumenta o risco de queda de muros e encostas.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5" id="cuidados">
+  <div class="container">
+    <h2 class="section-title mb-2">Cuidados antes, durante e depois</h2>
+    <p class="text-muted mb-4">A prevenção reduz o risco em cada etapa da enchente.</p>
+
+    <ul class="nav nav-pills mb-4" id="careTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#antes" type="button">Antes</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#durante" type="button">Durante</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#depois" type="button">Depois</button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="antes">
+        <div class="row g-3">
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Acompanhe os alertas</strong><p class="mb-0 text-muted">Fique atento aos avisos da Defesa Civil e à previsão de chuva forte.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Eleve o que for possível</strong><p class="mb-0 text-muted">Guarde documentos e aparelhos elétricos em locais altos.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Monte um kit de emergência</strong><p class="mb-0 text-muted">Água, lanterna, remédios e documentos em saco plástico.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Planeje uma rota de saída</strong><p class="mb-0 text-muted">Saiba para onde ir e combine um ponto de encontro com a família.</p></div></div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="durante">
+        <div class="row g-3">
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Não atravesse a água</strong><p class="mb-0 text-muted">Nem a pé, nem de carro — a profundidade e a correnteza enganam.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Desligue a energia elétrica</strong><p class="mb-0 text-muted">Corte a chave geral se a água começar a entrar em casa.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Busque um ponto mais alto</strong><p class="mb-0 text-muted">Suba para andares superiores e aguarde o resgate em segurança.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Evite se aproximar por curiosidade</strong><p class="mb-0 text-muted">Não vá até a área alagada — isso ocupa vias e gera risco à toa.</p></div></div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="depois">
+        <div class="row g-3">
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Use luvas e botas</strong><p class="mb-0 text-muted">Evite contato direto da pele com lama e água da enchente.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Descarte alimentos contaminados</strong><p class="mb-0 text-muted">Jogue fora tudo que teve contato com a água da enchente.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Procure atendimento se tiver febre</strong><p class="mb-0 text-muted">Pode ser sinal de leptospirose — vá a um posto de saúde.</p></div></div>
+          <div class="col-md-6"><div class="card p-3 h-100"><strong> Verifique a estrutura antes de voltar</strong><p class="mb-0 text-muted">Só reocupe a casa após checar energia e encanamento.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="py-5" id="desenvolvedores">
+  <div class="container">
+    <h2 class="section-title mb-2">Meus desenvolvedores</h2>
+    <p class="text-muted mb-4">Time por trás do Agrovision. Conforme o pessoal for entrando no projeto, os cards vão sendo adicionados aqui.</p>
+
+    <div class="row g-4">
+
+      <!-- Dev: Matheus Viotto -->
+      <div class="col-md-6 col-lg-4">
+        <a href="../PaginaPessoal/matheus-viotto.html" class="dev-card text-center d-flex flex-column align-items-center text-decoration-none">
+          <div class="dev-avatar mb-3">MV</div>
+          <h5 class="mb-1 text-dark">Matheus Viotto</h5>
+          <span class="dev-role mb-3">Desenvolvedor</span>
+          <span class="btn mt-auto" style="background:#0B2027; color:#fff;">Ver página pessoal</span>
+        </a>
+      </div>
+
+      <!-- Dev: Kayky Fernando -->
+      <div class="col-md-6 col-lg-4">
+        <a href="../PaginaKayky/kayky.html" class="dev-card text-center d-flex flex-column align-items-center text-decoration-none">
+          <div class="dev-avatar mb-3" style="background:#2563eb; color:#fff;">KF</div>
+          <h5 class="mb-1 text-dark">Kayky Fernando</h5>
+          <span class="dev-role mb-3">Desenvolvedor</span>
+          <span class="btn mt-auto" style="background:#0B2027; color:#fff;">Ver página pessoal</span>
+        </a>
+      </div>
+
+      <!-- Dev: Breno Garcia -->
+      <div class="col-md-6 col-lg-4">
+        <a href="../PaginaBreno/index.html" class="dev-card text-center d-flex flex-column align-items-center text-decoration-none">
+          <div class="dev-avatar mb-3" style="background:#0dcaf0; color:#0B2027;">BG</div>
+          <h5 class="mb-1 text-dark">Breno Garcia</h5>
+          <span class="dev-role mb-3">Desenvolvedor</span>
+          <span class="btn mt-auto" style="background:#0B2027; color:#fff;">Ver página pessoal</span>
+        </a>
+      </div>
+
+      <!-- Dev: Henrique Cabral -->
+      <div class="col-md-6 col-lg-4">
+        <a href="../PaginaHenrique/index.html" class="dev-card text-center d-flex flex-column align-items-center text-decoration-none">
+          <div class="dev-avatar mb-3" style="background:#c9a227; color:#0b0b0b;">HC</div>
+          <h5 class="mb-1 text-dark">Henrique Cabral</h5>
+          <span class="dev-role mb-3">Desenvolvedor</span>
+          <span class="btn mt-auto" style="background:#0B2027; color:#fff;">Ver página pessoal</span>
+        </a>
+      </div>
+
+      <!-- Vaga livre para o próximo desenvolvedor -->
+      <div class="col-md-6 col-lg-4">
+        <div class="dev-slot">
+          + Em breve: próximo desenvolvedor
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- Números -->
+<section class="py-5 stats-section" id="numeros">
+  <div class="container">
+    <div class="row g-4 text-center">
+      <div class="col-6 col-lg-3">
+        <div class="stat-num">5</div>
+        <div class="stat-label">Zonas monitoradas em Ribeirão Preto</div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-num">24h</div>
+        <div class="stat-label">Monitoramento contínuo do nível do rio</div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-num">~12min</div>
+        <div class="stat-label">Intervalo médio entre leituras</div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="stat-num">4</div>
+        <div class="stat-label">Contatos de emergência sempre à mão</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- FAQ -->
+<section class="py-5" id="faq">
+  <div class="container">
+    <h2 class="section-title mb-2">Perguntas frequentes</h2>
+    <p class="text-muted mb-4">Tirando as dúvidas mais comuns sobre o Agrovision.</p>
+
+    <div class="accordion" id="accordionFaq">
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+            Como o Agrovision sabe o nível do rio?
+          </button>
+        </h2>
+        <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+          <div class="accordion-body text-muted">
+            O sistema recebe leituras periódicas de estações que medem a cota do rio, cruzando essas leituras com a previsão de chuva da região pra estimar o risco de cada área.
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+            O Agrovision substitui a Defesa Civil?
+          </button>
+        </h2>
+        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+          <div class="accordion-body text-muted">
+            Não. O Agrovision é um painel de apoio e demonstração — em qualquer situação real de risco, siga sempre as orientações oficiais da Defesa Civil e dos órgãos de emergência do seu município.
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+            O sistema funciona em outras cidades além de Ribeirão Preto?
+          </button>
+        </h2>
+        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+          <div class="accordion-body text-muted">
+            A ideia do projeto é ser adaptável: bastaria cadastrar as zonas de risco e os contatos de emergência de outra cidade para reaproveitar a mesma estrutura.
+          </div>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+            Esse painel é gratuito?
+          </button>
+        </h2>
+        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+          <div class="accordion-body text-muted">
+            Sim. O Agrovision é um projeto acadêmico de demonstração, sem custo, desenvolvido para estudar como a tecnologia pode ajudar na prevenção de enchentes.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section class="py-5 bg-white" id="contatos">
+  <div class="container">
+    <h2 class="section-title mb-2">Contatos essenciais</h2>
+    <p class="text-muted mb-4">Salve esses números antes que a enchente chegue. Ligações de emergência são gratuitas.</p>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="card emergency-card h-100 p-3 text-center">
+          <small class="text-uppercase text-muted">Defesa Civil</small>
+          <div class="card-num">199</div>
+          <p class="mb-0 text-muted small">Risco iminente, deslizamentos e alagamentos. 24h.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card emergency-card h-100 p-3 text-center">
+          <small class="text-uppercase text-muted">Bombeiros</small>
+          <div class="card-num">193</div>
+          <p class="mb-0 text-muted small">Resgate de pessoas ilhadas ou em risco de afogamento.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100 p-3 text-center border-primary">
+          <small class="text-uppercase text-muted">SAMU</small>
+          <div class="card-num text-primary">192</div>
+          <p class="mb-0 text-muted small">Emergência médica e mal súbito.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100 p-3 text-center border-primary">
+          <small class="text-uppercase text-muted">Matheus Viotto</small>
+          <div class="card-num text-primary" style="font-size:1.4rem;">(16) 99248-0357</div>
+          <p class="mb-0 text-muted small">ajuda, 24h.</p>
+        </div>
+      </div>
+    </div>
+    <div class="alert alert-light border mt-4 small">
+      Os números acima são de Ribeirão Preto/SP e de serviços nacionais de emergência do Brasil. Em outra cidade, substitua o contato de saneamento pelo da concessionária local. Este painel é um projeto de demonstração do Agrovision — em uma emergência real, ligue sempre para os números oficiais.
+    </div>
+  </div>
+</section>
+
+<footer class="py-4 text-center small">
+  <div class="container">
+    Agrovision · Sistema de prevenção de enchentes — painel de demonstração
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+  const map = L.map('riskMap', { scrollWheelZoom: false }).setView([-21.1775, -47.8103], 12);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const zoneStyle = (color) => ({
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.35,
+    weight: 2
+  });
+
+  const zones = [
+    {
+      coords: [-21.1855, -47.8180],
+      radius: 900,
+      color: '#C0392B',
+      nome: 'Fundo de vale — Córrego Ribeirão Preto',
+      status: 'Perigo',
+      texto: 'Cota acima do limite de transbordamento. Evacuação recomendada para moradores próximos à margem.'
+    },
+    {
+      coords: [-21.1690, -47.7950],
+      radius: 850,
+      color: '#D9A62E',
+      nome: 'Vila Virgínia / margens leste',
+      status: 'Cuidado',
+      texto: 'Nível subindo nas últimas horas. Evite deslocamentos e mantenha-se informado.'
+    },
+    {
+      coords: [-21.2020, -47.8340],
+      radius: 800,
+      color: '#D9A62E',
+      nome: 'Jardim Zara / proximidades de córregos',
+      status: 'Cuidado',
+      texto: 'Histórico de alagamentos pontuais. Atenção redobrada em caso de chuva forte.'
+    },
+    {
+      coords: [-21.1620, -47.8280],
+      radius: 950,
+      color: '#2E8B57',
+      nome: 'Ribeirânia — região alta',
+      status: 'Tranquilo',
+      texto: 'Sem indícios de risco de alagamento nas últimas horas.'
+    },
+    {
+      coords: [-21.1900, -47.7870],
+      radius: 950,
+      color: '#2E8B57',
+      nome: 'Jardim Botânico — região alta',
+      status: 'Tranquilo',
+      texto: 'Área afastada de córregos, sem ocorrências registradas.'
+    }
+  ];
+
+  zones.forEach(z => {
+    const circle = L.circle(z.coords, { radius: z.radius, ...zoneStyle(z.color) }).addTo(map);
+    circle.bindPopup(
+      `<h6>${z.nome}</h6><span class="badge" style="background:${z.color}; color:#fff;">${z.status}</span><p class="mb-0">${z.texto}</p>`
+    );
+  });
+</script>
+</body>
+</html>
